@@ -1,0 +1,129 @@
+key: kubernetes
+name: Kubernetes
+version: "1.0.0"
+category: devops
+description: Apply manifests, check pod status, and scale deployments on a Kubernetes cluster.
+icon_url: null
+required_scopes:
+  - pods:get
+  - pods:list
+  - deployments:get
+  - deployments:patch
+
+auth:
+  type: api_key
+  fields:
+    - name: server_url
+      label: API Server URL
+      type: url
+      required: true
+      placeholder: https://my-cluster.example.com:6443
+    - name: token
+      label: Service Account Token
+      type: secret
+      required: true
+      help_text: Bearer token from a Kubernetes ServiceAccount
+    - name: ca_cert_base64
+      label: CA Certificate (base64, optional)
+      type: string
+      required: false
+      help_text: Base64-encoded cluster CA — leave empty to skip TLS verification (dev only)
+
+triggers: []
+
+actions:
+  - key: get_pod_status
+    name: Get Pod Status
+    description: Retrieve the status of a specific pod.
+    input_schema:
+      type: object
+      required: [namespace, pod_name]
+      properties:
+        namespace:
+          type: string
+          title: Namespace
+          default: default
+        pod_name:
+          type: string
+          title: Pod Name
+    output_schema:
+      type: object
+      properties:
+        phase:
+          type: string
+        conditions:
+          type: array
+        container_statuses:
+          type: array
+
+  - key: list_pods
+    name: List Pods
+    description: List pods in a namespace, optionally filtered by label selector.
+    input_schema:
+      type: object
+      required: [namespace]
+      properties:
+        namespace:
+          type: string
+          title: Namespace
+          default: default
+        label_selector:
+          type: string
+          title: Label Selector
+          placeholder: "app=my-app"
+    output_schema:
+      type: object
+      properties:
+        pods:
+          type: array
+
+  - key: scale_deployment
+    name: Scale Deployment
+    description: Set the replica count on a Deployment.
+    input_schema:
+      type: object
+      required: [namespace, deployment_name, replicas]
+      properties:
+        namespace:
+          type: string
+          title: Namespace
+          default: default
+        deployment_name:
+          type: string
+          title: Deployment Name
+        replicas:
+          type: integer
+          title: Replica Count
+    output_schema:
+      type: object
+      properties:
+        deployment_name:
+          type: string
+        replicas:
+          type: integer
+
+  - key: apply_manifest
+    name: Apply Manifest
+    description: Apply a Kubernetes manifest (JSON) using server-side apply.
+    input_schema:
+      type: object
+      required: [manifest]
+      properties:
+        manifest:
+          type: object
+          title: Manifest (JSON — must include apiVersion, kind, metadata)
+        field_manager:
+          type: string
+          title: Field Manager
+          default: nexus
+    output_schema:
+      type: object
+      properties:
+        kind:
+          type: string
+        name:
+          type: string
+        namespace:
+          type: string
+        uid:
+          type: string

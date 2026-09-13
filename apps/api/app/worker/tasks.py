@@ -1,24 +1,24 @@
 """
 Celery task: execute a flow run.
 
-This task is the heart of the execution engine. It:
-  1. Loads the graph snapshot from the Run row (immutable once submitted)
-  2. Walks nodes in topological order
-  3. For each node, resolves the connector, decrypts credentials, calls the action
-  4. Persists RunStep records (input, output, status, duration) to Postgres
-  5. Updates Run.status when done
+Walks the DAG in topological order, calls connector actions,
+persists RunStep records, and publishes step-level status updates
+to Redis pub/sub so the WebSocket endpoint can stream them to the UI.
 """
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+import redis
 from celery import Task
 
 from app.celery_app import celery_app
+from app.config import settings
 from app.worker.dag import FlowContext, topological_sort
 from nexus_sdk import get_connector_class
 from app.services.credential_service import decrypt_credentials
@@ -28,10 +28,20 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _publish(run_id: str, payload: dict) -> None:
+    """Fire-and-forget publish to Redis pub/sub channel for this run."""
+    try:
+        r = redis.from_url(settings.redis_url)
+        r.publish(f"run:{run_id}", json.dumps(payload))
+        r.close()
+    except Exception:
+        pass  # observability failure must never break execution
+
+
 @celery_app.task(
     name="nexus.execute_flow_run",
     bind=True,
-    max_retries=0,       # the task itself does per-step retries; don't retry the whole run
+    max_retries=0,
     acks_late=True,
 )
 def execute_flow_run(
@@ -41,9 +51,6 @@ def execute_flow_run(
     graph_snapshot: dict[str, Any],
     trigger_payload: dict[str, Any],
 ) -> dict[str, Any]:
-    """
-    Synchronous Celery entry point — runs the async executor in a new event loop.
-    """
     return asyncio.get_event_loop().run_until_complete(
         _execute(self, run_id, flow_id, graph_snapshot, trigger_payload)
     )
@@ -62,7 +69,7 @@ async def _execute(
     nodes_by_id = {n["id"]: n for n in graph["nodes"]}
     edges = graph["edges"]
     order = topological_sort(graph["nodes"], edges)
-    # Build predecessor map so each node can read predecessor outputs
+
     predecessors: dict[str, list[str]] = {nid: [] for nid in nodes_by_id}
     for edge in edges:
         predecessors[edge["target"]].append(edge["source"])
@@ -70,12 +77,13 @@ async def _execute(
     ctx = FlowContext(trigger_payload)
 
     async with AsyncSessionLocal() as db:
-        # Mark run as running
         run = await db.get(Run, uuid.UUID(run_id))
         if run is None:
             return {"error": "Run not found"}
         run.status = "running"
         await db.commit()
+
+        _publish(run_id, {"event": "run_started", "run_status": "running"})
 
         run_failed = False
 
@@ -83,17 +91,19 @@ async def _execute(
             node = nodes_by_id[node_id]
             node_type = node.get("type")
 
-            # Trigger node: output = the trigger payload (already in context)
             if node_type == "trigger":
                 ctx.set_output(node_id, trigger_payload)
+                _publish(run_id, {
+                    "event": "step_update",
+                    "node_id": node_id,
+                    "step_status": "success",
+                })
                 continue
 
-            # Build inputs: merge outputs from all predecessor nodes
             inputs: dict[str, Any] = {}
             for pred_id in predecessors[node_id]:
                 pred_out = ctx.get_output(pred_id) or {}
                 inputs.update(pred_out)
-            # Override with node-level static config
             inputs.update(node.get("config_json", {}))
 
             step = RunStep(
@@ -105,6 +115,8 @@ async def _execute(
             )
             db.add(step)
             await db.flush()
+
+            _publish(run_id, {"event": "step_update", "node_id": node_id, "step_status": "running"})
 
             t_start = time.monotonic()
             output: dict[str, Any] = {}
@@ -123,11 +135,10 @@ async def _execute(
 
                 elif node_type == "condition":
                     expr = node.get("config_json", {}).get("expression", "true")
-                    result = eval(expr, {"__builtins__": {}}, ctx.as_dict())  # noqa: S307 — sandboxed eval for conditions
+                    result = eval(expr, {"__builtins__": {}}, ctx.as_dict())  # noqa: S307
                     output = {"result": bool(result), "expression": expr}
 
                 elif node_type == "transform":
-                    # Transform nodes evaluate a mapping of output_key -> expression
                     mapping = node.get("config_json", {}).get("mapping", {})
                     output = {
                         k: eval(v, {"__builtins__": {}}, ctx.as_dict())  # noqa: S307
@@ -149,6 +160,15 @@ async def _execute(
                 step.finished_at = _now()
                 await db.commit()
 
+            _publish(run_id, {
+                "event": "step_update",
+                "node_id": node_id,
+                "step_id": str(step.id),
+                "step_status": step.status,
+                "duration_ms": step.duration_ms,
+                "error": error,
+            })
+
             if run_failed:
                 break
 
@@ -156,4 +176,5 @@ async def _execute(
         run.finished_at = _now()
         await db.commit()
 
+    _publish(run_id, {"event": "run_finished", "run_status": run.status})
     return {"run_id": run_id, "status": run.status}

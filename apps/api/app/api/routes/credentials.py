@@ -1,10 +1,7 @@
-"""
-Credential vault CRUD.
-Raw secrets are never returned after creation — only masked placeholders.
-"""
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models.credential import CredentialInstance
-from app.services.credential_service import encrypt_credentials
+from app.services.credential_service import encrypt_credentials, decrypt_payload
+from nexus_sdk.registry import get_connector_class
+from nexus_sdk.connector import ConnectorError
 
 router = APIRouter(prefix="/credentials", tags=["credentials"])
 
@@ -22,28 +21,18 @@ router = APIRouter(prefix="/credentials", tags=["credentials"])
 class CredentialCreateRequest(BaseModel):
     connector_id: str
     name: str
-    payload: dict[str, Any]  # raw credential fields — encrypted immediately, never stored plain
+    payload: dict[str, Any]
 
 
-class CredentialResponse(BaseModel):
-    id: str
-    connector_id: str
-    name: str
-    status: str
-    last_tested_at: str | None
-
-    model_config = {"from_attributes": True}
-
-
-@router.get("/", response_model=list[CredentialResponse])
+@router.get("/")
 async def list_credentials(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(select(CredentialInstance).order_by(CredentialInstance.name))
     return [_serialize(c) for c in rows.scalars()]
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=CredentialResponse)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_credential(body: CredentialCreateRequest, db: AsyncSession = Depends(get_db)):
-    placeholder_owner = uuid.uuid4()  # replace with authenticated user
+    placeholder_owner = uuid.uuid4()
     cred = CredentialInstance(
         connector_id=uuid.UUID(body.connector_id),
         name=body.name,
@@ -54,6 +43,39 @@ async def create_credential(body: CredentialCreateRequest, db: AsyncSession = De
     await db.commit()
     await db.refresh(cred)
     return _serialize(cred)
+
+
+@router.post("/{credential_id}/test")
+async def test_credential(credential_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Decrypt the credential, instantiate the connector, and call test_connection()."""
+    cred = await db.get(CredentialInstance, credential_id)
+    if not cred:
+        raise HTTPException(status_code=404, detail="Credential not found")
+
+    # Look up the connector key via the connector row
+    from app.models.connector import Connector
+    connector_row = await db.get(Connector, cred.connector_id)
+    if not connector_row:
+        raise HTTPException(status_code=404, detail="Connector not found for this credential")
+
+    try:
+        ConnectorClass = get_connector_class(connector_row.key)
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Connector {connector_row.key!r} not loaded in registry")
+
+    credentials = decrypt_payload(cred.encrypted_payload)
+    connector = ConnectorClass(credentials=credentials)
+
+    try:
+        result = await connector.test_connection()
+        cred.status = "active"
+    except ConnectorError as exc:
+        cred.status = "invalid"
+        result = {"ok": False, "error": str(exc)}
+
+    cred.last_tested_at = datetime.now(timezone.utc)
+    await db.commit()
+    return result
 
 
 @router.delete("/{credential_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -1,0 +1,153 @@
+key: zendesk
+name: Zendesk
+version: "1.0.0"
+category: ticketing
+description: Create, update, and comment on Zendesk support tickets.
+icon_url: null
+required_scopes:
+  - tickets:read
+  - tickets:write
+
+auth:
+  type: api_key
+  fields:
+    - name: subdomain
+      label: Subdomain
+      type: string
+      required: true
+      placeholder: yourcompany
+      help_text: "Your Zendesk URL prefix: https://<subdomain>.zendesk.com"
+    - name: email
+      label: Agent Email
+      type: string
+      required: true
+    - name: api_token
+      label: API Token
+      type: secret
+      required: true
+      help_text: Found in Zendesk Admin → Channels → API → API token
+
+triggers:
+  - key: ticket_created
+    name: Ticket Created
+    description: Fires when a new ticket is created (configure a Zendesk webhook pointing to this flow's URL).
+    output_schema:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+        subject:
+          type: string
+        status:
+          type: string
+        requester_email:
+          type: string
+
+actions:
+  - key: create_ticket
+    name: Create Ticket
+    description: Create a new support ticket.
+    input_schema:
+      type: object
+      required: [subject, body]
+      properties:
+        subject:
+          type: string
+          title: Subject
+        body:
+          type: string
+          title: Body
+        requester_email:
+          type: string
+          title: Requester Email
+        priority:
+          type: string
+          title: Priority
+          enum: [low, normal, high, urgent]
+          default: normal
+        tags:
+          type: string
+          title: Tags (comma-separated)
+    output_schema:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+        url:
+          type: string
+        status:
+          type: string
+
+  - key: update_ticket
+    name: Update Ticket
+    description: Update an existing ticket's status, priority, or assignee.
+    input_schema:
+      type: object
+      required: [ticket_id]
+      properties:
+        ticket_id:
+          type: string
+          title: Ticket ID
+        status:
+          type: string
+          title: Status
+          enum: [open, pending, hold, solved, closed]
+        priority:
+          type: string
+          title: Priority
+          enum: [low, normal, high, urgent]
+        assignee_id:
+          type: string
+          title: Assignee User ID
+    output_schema:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+        status:
+          type: string
+
+  - key: add_comment
+    name: Add Comment
+    description: Add a public or private comment to a ticket.
+    input_schema:
+      type: object
+      required: [ticket_id, body]
+      properties:
+        ticket_id:
+          type: string
+          title: Ticket ID
+        body:
+          type: string
+          title: Comment Body
+        public:
+          type: boolean
+          title: Public Comment
+          default: true
+    output_schema:
+      type: object
+      properties:
+        comment_id:
+          type: string
+
+  - key: get_ticket
+    name: Get Ticket
+    description: Retrieve a ticket by ID.
+    input_schema:
+      type: object
+      required: [ticket_id]
+      properties:
+        ticket_id:
+          type: string
+          title: Ticket ID
+    output_schema:
+      type: object
+      properties:
+        ticket_id:
+          type: string
+        subject:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string

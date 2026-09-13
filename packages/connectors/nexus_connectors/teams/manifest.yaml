@@ -1,0 +1,111 @@
+key: teams
+name: Microsoft Teams
+version: "1.0.0"
+category: communication
+description: Send messages, create meetings, and post to channels via Microsoft Graph API.
+icon_url: null
+required_scopes:
+  - ChannelMessage.Send
+  - Chat.ReadWrite
+  - OnlineMeetings.ReadWrite
+
+auth:
+  type: oauth2
+  fields:
+    - name: tenant_id
+      label: Tenant ID
+      type: string
+      required: true
+      help_text: Azure AD tenant ID (found in Azure Portal → Azure Active Directory)
+    - name: client_id
+      label: Client (Application) ID
+      type: string
+      required: true
+    - name: client_secret
+      label: Client Secret
+      type: secret
+      required: true
+    - name: access_token
+      label: Access Token (optional override)
+      type: secret
+      required: false
+      help_text: Provide a pre-obtained access token instead of client credentials
+  oauth2:
+    authorization_url: https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/authorize
+    token_url: https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token
+    scopes:
+      - https://graph.microsoft.com/ChannelMessage.Send
+      - https://graph.microsoft.com/Chat.ReadWrite
+
+triggers: []
+
+actions:
+  - key: send_channel_message
+    name: Send Channel Message
+    description: Post a message to a Teams channel.
+    input_schema:
+      type: object
+      required: [team_id, channel_id, message]
+      properties:
+        team_id:
+          type: string
+          title: Team ID
+        channel_id:
+          type: string
+          title: Channel ID
+        message:
+          type: string
+          title: Message (HTML or plain text)
+    output_schema:
+      type: object
+      properties:
+        message_id:
+          type: string
+        created_at:
+          type: string
+
+  - key: send_chat_message
+    name: Send Chat Message
+    description: Send a message in a 1:1 or group chat.
+    input_schema:
+      type: object
+      required: [chat_id, message]
+      properties:
+        chat_id:
+          type: string
+          title: Chat ID
+        message:
+          type: string
+          title: Message Body
+    output_schema:
+      type: object
+      properties:
+        message_id:
+          type: string
+
+  - key: create_meeting
+    name: Create Online Meeting
+    description: Schedule a Teams meeting and return the join URL.
+    input_schema:
+      type: object
+      required: [subject, start_datetime, end_datetime]
+      properties:
+        subject:
+          type: string
+          title: Meeting Subject
+        start_datetime:
+          type: string
+          title: Start (ISO 8601)
+          placeholder: "2026-10-01T10:00:00Z"
+        end_datetime:
+          type: string
+          title: End (ISO 8601)
+    output_schema:
+      type: object
+      properties:
+        meeting_id:
+          type: string
+        join_url:
+          type: string
+        join_web_url:
+          type: string

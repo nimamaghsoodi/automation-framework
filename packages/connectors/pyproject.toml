@@ -9,4 +9,13 @@ requires-python = ">=3.12"
 dependencies = [
     "nexus-sdk>=0.1.0",
     "httpx>=0.28",
+    "boto3>=1.35",
+    "asyncpg>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "respx>=0.21",
 ]

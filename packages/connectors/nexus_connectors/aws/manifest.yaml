@@ -1,0 +1,121 @@
+key: aws
+name: AWS
+version: "1.0.0"
+category: cloud
+description: Interact with AWS services — SQS message queuing and Lambda function invocation.
+icon_url: null
+required_scopes:
+  - sqs:SendMessage
+  - sqs:ReceiveMessage
+  - sqs:DeleteMessage
+  - lambda:InvokeFunction
+
+auth:
+  type: iam
+  fields:
+    - name: aws_access_key_id
+      label: AWS Access Key ID
+      type: string
+      required: true
+    - name: aws_secret_access_key
+      label: AWS Secret Access Key
+      type: secret
+      required: true
+    - name: aws_region
+      label: AWS Region
+      type: string
+      required: true
+      placeholder: eu-west-1
+    - name: aws_session_token
+      label: Session Token (optional, for temporary credentials)
+      type: secret
+      required: false
+
+triggers: []
+
+actions:
+  - key: sqs_send_message
+    name: SQS — Send Message
+    description: Send a message to an SQS queue.
+    input_schema:
+      type: object
+      required: [queue_url, message_body]
+      properties:
+        queue_url:
+          type: string
+          title: Queue URL
+          placeholder: https://sqs.eu-west-1.amazonaws.com/123456789012/my-queue
+        message_body:
+          type: string
+          title: Message Body (string or JSON)
+        delay_seconds:
+          type: integer
+          title: Delay Seconds
+          default: 0
+        message_group_id:
+          type: string
+          title: Message Group ID (FIFO queues only)
+    output_schema:
+      type: object
+      properties:
+        message_id:
+          type: string
+        md5_of_body:
+          type: string
+
+  - key: sqs_receive_messages
+    name: SQS — Receive Messages
+    description: Poll for messages from an SQS queue (up to 10 at a time).
+    input_schema:
+      type: object
+      required: [queue_url]
+      properties:
+        queue_url:
+          type: string
+          title: Queue URL
+        max_messages:
+          type: integer
+          title: Max Messages
+          default: 1
+        wait_time_seconds:
+          type: integer
+          title: Long-poll Wait Time (seconds)
+          default: 0
+        delete_after_receive:
+          type: boolean
+          title: Delete after receiving
+          default: false
+    output_schema:
+      type: object
+      properties:
+        messages:
+          type: array
+
+  - key: lambda_invoke
+    name: Lambda — Invoke Function
+    description: Synchronously invoke an AWS Lambda function.
+    input_schema:
+      type: object
+      required: [function_name]
+      properties:
+        function_name:
+          type: string
+          title: Function Name or ARN
+        payload:
+          type: object
+          title: Invocation Payload (JSON)
+          default: {}
+        invocation_type:
+          type: string
+          title: Invocation Type
+          enum: [RequestResponse, Event, DryRun]
+          default: RequestResponse
+    output_schema:
+      type: object
+      properties:
+        status_code:
+          type: integer
+        payload:
+          type: object
+        function_error:
+          type: string

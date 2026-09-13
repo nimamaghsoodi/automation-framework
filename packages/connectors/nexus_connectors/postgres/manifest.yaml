@@ -1,0 +1,113 @@
+key: postgres
+name: PostgreSQL
+version: "1.0.0"
+category: database
+description: Execute queries, insert rows, and fetch data from a PostgreSQL database.
+icon_url: null
+required_scopes: []
+
+auth:
+  type: basic
+  fields:
+    - name: host
+      label: Host
+      type: string
+      required: true
+      placeholder: localhost
+    - name: port
+      label: Port
+      type: string
+      required: false
+      default: "5432"
+    - name: database
+      label: Database Name
+      type: string
+      required: true
+    - name: username
+      label: Username
+      type: string
+      required: true
+    - name: password
+      label: Password
+      type: secret
+      required: false
+    - name: ssl_mode
+      label: SSL Mode
+      type: select
+      required: false
+      options: [disable, require, verify-ca, verify-full]
+      default: require
+
+triggers: []
+
+actions:
+  - key: execute_query
+    name: Execute Query
+    description: Run a SQL query and return results as a list of rows.
+    input_schema:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          title: SQL Query
+          placeholder: "SELECT * FROM orders WHERE status = $1"
+        params:
+          type: string
+          title: Query Parameters (JSON array)
+          placeholder: '["open"]'
+          default: "[]"
+        max_rows:
+          type: integer
+          title: Max Rows Returned
+          default: 100
+    output_schema:
+      type: object
+      properties:
+        rows:
+          type: array
+        row_count:
+          type: integer
+
+  - key: insert_row
+    name: Insert Row
+    description: Insert a single row into a table and return the inserted row.
+    input_schema:
+      type: object
+      required: [table, row]
+      properties:
+        table:
+          type: string
+          title: Table Name
+        row:
+          type: object
+          title: Row Data (column → value)
+        returning:
+          type: string
+          title: RETURNING columns (e.g. "id, created_at")
+          default: "*"
+    output_schema:
+      type: object
+      properties:
+        inserted_row:
+          type: object
+
+  - key: execute_statement
+    name: Execute Statement
+    description: Run a non-SELECT SQL statement (INSERT/UPDATE/DELETE). Returns affected row count.
+    input_schema:
+      type: object
+      required: [statement]
+      properties:
+        statement:
+          type: string
+          title: SQL Statement
+        params:
+          type: string
+          title: Parameters (JSON array)
+          default: "[]"
+    output_schema:
+      type: object
+      properties:
+        affected_rows:
+          type: integer

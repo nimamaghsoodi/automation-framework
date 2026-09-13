@@ -1,0 +1,172 @@
+key: jira
+name: Jira
+version: "1.0.0"
+category: ticketing
+description: Create and manage Jira issues, transitions, and comments.
+icon_url: null
+required_scopes:
+  - read:jira-work
+  - write:jira-work
+
+auth:
+  type: api_key
+  fields:
+    - name: base_url
+      label: Jira Base URL
+      type: url
+      required: true
+      placeholder: https://yourcompany.atlassian.net
+    - name: email
+      label: Account Email
+      type: string
+      required: true
+    - name: api_token
+      label: API Token
+      type: secret
+      required: true
+      help_text: Generate at https://id.atlassian.com/manage-profile/security/api-tokens
+
+triggers:
+  - key: issue_created
+    name: Issue Created
+    description: Fires when a Jira issue is created (configure Jira webhook).
+    output_schema:
+      type: object
+      properties:
+        issue_key:
+          type: string
+        summary:
+          type: string
+        status:
+          type: string
+        assignee:
+          type: string
+
+actions:
+  - key: create_issue
+    name: Create Issue
+    description: Create a new Jira issue.
+    input_schema:
+      type: object
+      required: [project_key, summary, issue_type]
+      properties:
+        project_key:
+          type: string
+          title: Project Key
+          placeholder: NEXUS
+        summary:
+          type: string
+          title: Summary
+        description:
+          type: string
+          title: Description (plain text)
+        issue_type:
+          type: string
+          title: Issue Type
+          enum: [Bug, Story, Task, Epic, Sub-task]
+          default: Task
+        priority:
+          type: string
+          title: Priority
+          enum: [Highest, High, Medium, Low, Lowest]
+        assignee_account_id:
+          type: string
+          title: Assignee Account ID
+        labels:
+          type: string
+          title: Labels (comma-separated)
+    output_schema:
+      type: object
+      properties:
+        issue_key:
+          type: string
+        issue_id:
+          type: string
+        url:
+          type: string
+
+  - key: update_issue
+    name: Update Issue
+    description: Update a Jira issue's summary, description, or assignee.
+    input_schema:
+      type: object
+      required: [issue_key]
+      properties:
+        issue_key:
+          type: string
+          title: Issue Key (e.g. NEXUS-42)
+        summary:
+          type: string
+          title: New Summary
+        description:
+          type: string
+          title: New Description
+        assignee_account_id:
+          type: string
+          title: Assignee Account ID
+    output_schema:
+      type: object
+      properties:
+        issue_key:
+          type: string
+
+  - key: transition_issue
+    name: Transition Issue
+    description: Move an issue to a different status (workflow transition).
+    input_schema:
+      type: object
+      required: [issue_key, transition_id]
+      properties:
+        issue_key:
+          type: string
+          title: Issue Key
+        transition_id:
+          type: string
+          title: Transition ID
+          help_text: Get transition IDs from GET /rest/api/3/issue/{key}/transitions
+    output_schema:
+      type: object
+      properties:
+        ok:
+          type: boolean
+
+  - key: add_comment
+    name: Add Comment
+    description: Add a comment to a Jira issue.
+    input_schema:
+      type: object
+      required: [issue_key, body]
+      properties:
+        issue_key:
+          type: string
+          title: Issue Key
+        body:
+          type: string
+          title: Comment Body
+    output_schema:
+      type: object
+      properties:
+        comment_id:
+          type: string
+
+  - key: get_issue
+    name: Get Issue
+    description: Retrieve a Jira issue by key.
+    input_schema:
+      type: object
+      required: [issue_key]
+      properties:
+        issue_key:
+          type: string
+          title: Issue Key
+    output_schema:
+      type: object
+      properties:
+        issue_key:
+          type: string
+        summary:
+          type: string
+        status:
+          type: string
+        assignee:
+          type: string
