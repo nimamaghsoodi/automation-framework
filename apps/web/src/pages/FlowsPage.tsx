@@ -8,11 +8,26 @@ export default function FlowsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     api.flows.list().then(setFlows).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, []);
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await api.flows.delete(id);
+      setFlows((fs) => fs.filter((f) => f.id !== id));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to delete flow");
+    } finally {
+      setDeletingId(null);
+      setConfirmId(null);
+    }
+  }
 
   async function handleCreate() {
     setCreating(true);
@@ -64,26 +79,56 @@ export default function FlowsPage() {
       ) : (
         <div className="grid gap-3">
           {flows.map((flow) => (
-            <button
+            <div
               key={flow.id}
-              onClick={() => navigate(`/flows/${flow.id}`)}
-              className="flex items-start justify-between p-4 rounded-lg border border-border bg-surface-raised hover:border-accent/50 hover:bg-surface-overlay transition-all text-left group"
+              className="flex items-start justify-between p-4 rounded-lg border border-border bg-surface-raised hover:border-accent/50 hover:bg-surface-overlay transition-all group"
             >
-              <div>
+              <button
+                onClick={() => navigate(`/flows/${flow.id}`)}
+                className="flex-1 text-left"
+              >
                 <div className="font-medium text-text-primary group-hover:text-accent-hover transition-colors">
                   {flow.name}
                 </div>
                 {flow.description && (
                   <div className="text-sm text-text-secondary mt-0.5">{flow.description}</div>
                 )}
-              </div>
+              </button>
               <div className="flex items-center gap-3 shrink-0 ml-4 mt-0.5">
                 <span className={cn("text-xs font-medium uppercase tracking-wide", statusColors[flow.status] ?? "text-text-muted")}>
                   {flow.status}
                 </span>
                 <span className="text-xs text-text-muted">v{flow.version}</span>
+                {confirmId === flow.id ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-text-secondary">Delete?</span>
+                    <button
+                      onClick={() => handleDelete(flow.id)}
+                      disabled={deletingId === flow.id}
+                      className="px-2 py-0.5 text-xs font-medium rounded bg-red-600 hover:bg-red-500 text-white disabled:opacity-50 transition-colors"
+                    >
+                      {deletingId === flow.id ? "…" : "Yes"}
+                    </button>
+                    <button
+                      onClick={() => setConfirmId(null)}
+                      className="px-2 py-0.5 text-xs font-medium rounded border border-border text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      No
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setConfirmId(flow.id)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-text-muted hover:text-status-error transition-all"
+                    title="Delete flow"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    </svg>
+                  </button>
+                )}
               </div>
-            </button>
+            </div>
           ))}
         </div>
       )}

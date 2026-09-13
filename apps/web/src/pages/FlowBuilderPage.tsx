@@ -61,6 +61,7 @@ export default function FlowBuilderPage() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const nodeIdCounter = useRef(1);
 
   const {
@@ -106,7 +107,7 @@ export default function FlowBuilderPage() {
   }, [selectNode]);
 
   function addNode(connectorKey: string, connectorName: string, nodeType: "trigger" | "action") {
-    const id = `node-${Date.now()}-${nodeIdCounter.current++}`;
+    const id = crypto.randomUUID();
     const newNode: Node = {
       id,
       type: "nexus",
@@ -171,6 +172,12 @@ export default function FlowBuilderPage() {
     }
   }
 
+  async function handleDelete() {
+    if (!flow) return;
+    await api.flows.delete(flow.id);
+    navigate("/");
+  }
+
   function handleRunStarted(run: Run) {
     resetRunStates();
     setActiveRun(run.id);
@@ -214,6 +221,31 @@ export default function FlowBuilderPage() {
         >
           {saving ? "Saving…" : "Save"}
         </button>
+        {confirmDelete ? (
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-text-secondary">Delete this flow?</span>
+            <button
+              onClick={handleDelete}
+              className="px-2 py-1 text-xs font-medium rounded bg-red-600 hover:bg-red-500 text-white transition-colors"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="px-2 py-1 text-xs font-medium rounded border border-border text-text-secondary hover:text-text-primary transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="px-3 py-1.5 text-xs font-medium rounded border border-border text-text-muted hover:text-status-error hover:border-red-800 transition-colors"
+            title="Delete flow"
+          >
+            Delete
+          </button>
+        )}
         <button
           onClick={openRunModal}
           className="px-3 py-1.5 text-xs font-medium rounded bg-accent text-white hover:bg-accent-hover transition-colors"
