@@ -22,6 +22,9 @@ from app.config import settings
 from app.worker.dag import FlowContext, topological_sort
 from nexus_sdk import get_connector_class
 from app.services.credential_service import decrypt_credentials
+from app.worker.connector_registry import autodiscover as _autodiscover
+
+_autodiscover()  # register all connectors in worker process
 
 
 def _now() -> datetime:
@@ -106,9 +109,14 @@ async def _execute(
                 inputs.update(pred_out)
             inputs.update(node.get("config_json", {}))
 
+            try:
+                node_uuid = uuid.UUID(node_id)
+            except ValueError:
+                node_uuid = uuid.uuid5(uuid.UUID(run_id), node_id)
+
             step = RunStep(
                 run_id=uuid.UUID(run_id),
-                node_id=uuid.UUID(node_id),
+                node_id=node_uuid,
                 status="running",
                 input_json=inputs,
                 attempt=1,

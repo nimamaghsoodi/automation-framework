@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.db import get_db
 from app.execution.celery_backend import CeleryExecutionBackend
@@ -77,13 +78,16 @@ async def trigger_run(body: TriggerRunRequest, db: AsyncSession = Depends(get_db
     run.celery_task_id = task_id
     await db.commit()
 
-    await db.refresh(run)
+    result = await db.execute(
+        select(Run).where(Run.id == run.id).options(selectinload(Run.steps))
+    )
+    run = result.scalar_one()
     return _serialize_run(run)
 
 
 @router.get("/", response_model=list[RunResponse])
 async def list_runs(flow_id: str | None = None, db: AsyncSession = Depends(get_db)):
-    q = select(Run).order_by(Run.started_at.desc()).limit(100)
+    q = select(Run).options(selectinload(Run.steps)).order_by(Run.started_at.desc()).limit(100)
     if flow_id:
         q = q.where(Run.flow_id == uuid.UUID(flow_id))
     rows = await db.execute(q)
@@ -92,11 +96,12 @@ async def list_runs(flow_id: str | None = None, db: AsyncSession = Depends(get_d
 
 @router.get("/{run_id}", response_model=RunResponse)
 async def get_run(run_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
-    run = await db.get(Run, run_id)
+    result = await db.execute(
+        select(Run).where(Run.id == run_id).options(selectinload(Run.steps))
+    )
+    run = result.scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
-    steps = await db.execute(select(RunStep).where(RunStep.run_id == run_id).order_by(RunStep.started_at))
-    run.steps = steps.scalars().all()
     return _serialize_run(run)
 
 
