@@ -2,6 +2,23 @@ import { useAuthStore } from "../store/authStore";
 
 const BASE = "/api/v1";
 
+/** Authenticated fetch — use this instead of raw fetch() for all API calls. */
+export async function authFetch(path: string, init?: RequestInit): Promise<Response> {
+  const token = useAuthStore.getState().token;
+  const res = await fetch(path.startsWith("/api") ? path : `${BASE}${path}`, {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (res.status === 401) {
+    useAuthStore.getState().clearAuth();
+    window.dispatchEvent(new CustomEvent("nexus:unauthorized"));
+  }
+  return res;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   // Read from in-memory Zustand store — always up-to-date, no localStorage race
   const token = useAuthStore.getState().token;
@@ -69,12 +86,25 @@ export const api = {
   connectors: {
     list: () => request<Connector[]>("/connectors/"),
     get: (key: string) => request<Connector>(`/connectors/${key}`),
+    manifest: (key: string) => request<ConnectorManifest>(`/connectors/${key}/manifest`),
+    allManifests: () => request<Record<string, ConnectorManifest>>("/connectors/manifests/all"),
   },
   credentials: {
     list: () => request<Credential[]>("/credentials/"),
     create: (body: CredentialCreateRequest) =>
       request<Credential>("/credentials/", { method: "POST", body: JSON.stringify(body) }),
     delete: (id: string) => request<void>(`/credentials/${id}`, { method: "DELETE" }),
+    test: (id: string) => request<{ ok: boolean; error?: string }>(`/credentials/${id}/test`, { method: "POST" }),
+  },
+  schedules: {
+    list: () => request<ScheduleItem[]>("/schedules/"),
+    get: (flowId: string) => request<ScheduleItem>(`/schedules/${flowId}`),
+    set: (flowId: string, cronExpression: string) =>
+      request<ScheduleItem>(`/schedules/${flowId}`, {
+        method: "PUT",
+        body: JSON.stringify({ cron_expression: cronExpression }),
+      }),
+    delete: (flowId: string) => request<void>(`/schedules/${flowId}`, { method: "DELETE" }),
   },
 };
 
@@ -134,6 +164,7 @@ export interface FlowCreateRequest {
 export interface Run {
   id: string;
   flow_id: string;
+  flow_name: string;
   flow_version: number;
   trigger_source: string;
   status: "pending" | "running" | "success" | "failed" | "cancelled";
@@ -163,6 +194,21 @@ export interface Connector {
   description: string | null;
 }
 
+export interface ConnectorManifest {
+  key: string;
+  name: string;
+  category: string;
+  description?: string;
+  triggers: { key: string; name: string }[];
+  actions: {
+    key: string;
+    name: string;
+    description?: string;
+    input_schema: { properties: Record<string, unknown>; required?: string[] };
+  }[];
+  auth?: { fields: { name: string; label: string; type: string; required?: boolean; placeholder?: string; help_text?: string }[] };
+}
+
 export interface Credential {
   id: string;
   connector_id: string;
@@ -175,4 +221,13 @@ export interface CredentialCreateRequest {
   connector_id: string;
   name: string;
   payload: Record<string, unknown>;
+}
+
+export interface ScheduleItem {
+  flow_id: string;
+  flow_name: string;
+  flow_status: string;
+  cron_expression: string;
+  enabled: boolean;
+  is_script: boolean;
 }

@@ -30,10 +30,9 @@ export default function CredentialsPage() {
     setTesting((t) => ({ ...t, [id]: true }));
     setTestResults((r) => ({ ...r, [id]: "" }));
     try {
-      const result = await fetch(`/api/v1/credentials/${id}/test`, { method: "POST" }).then((r) => r.json());
+      const result = await api.credentials.test(id);
       const msg = result.ok !== false ? "✓ Connection successful" : `✗ ${result.error ?? "Failed"}`;
       setTestResults((r) => ({ ...r, [id]: msg }));
-      // Refresh status
       setCredentials((prev) =>
         prev.map((c) => c.id === id ? { ...c, status: result.ok !== false ? "active" : "invalid" } : c)
       );

@@ -27,8 +27,9 @@ export default function LoginPage() {
 
   async function _applyToken(t: string) {
     try {
-      // Temporarily store so api.me() can use it
-      localStorage.setItem("nexus-auth", JSON.stringify({ state: { token: t, user: null } }));
+      // Set token in the in-memory store first so the api.auth.me() request
+      // picks it up via useAuthStore.getState().token (no localStorage race).
+      setAuth(t, { id: "", email: "", role: "viewer", is_active: true });
       const user = await api.auth.me();
       setAuth(t, user);
       navigate("/", { replace: true });

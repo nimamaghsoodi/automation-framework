@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Flow } from "../lib/api";
 import { cn } from "../lib/utils";
@@ -7,9 +7,12 @@ export default function FlowsPage() {
   const [flows, setFlows] = useState<Flow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showNameForm, setShowNameForm] = useState(false);
+  const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,14 +32,26 @@ export default function FlowsPage() {
     }
   }
 
-  async function handleCreate() {
+  function openNameForm() {
+    setNewName("");
+    setShowNameForm(true);
+    setTimeout(() => nameInputRef.current?.focus(), 0);
+  }
+
+  function cancelNameForm() {
+    setShowNameForm(false);
+    setNewName("");
+  }
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    const name = newName.trim() || "Untitled Flow";
     setCreating(true);
     try {
-      const flow = await api.flows.create({ name: "Untitled Flow" });
+      const flow = await api.flows.create({ name });
       navigate(`/flows/${flow.id}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to create flow");
-    } finally {
       setCreating(false);
     }
   }
@@ -54,13 +69,40 @@ export default function FlowsPage() {
           <h1 className="text-xl font-semibold">Flows</h1>
           <p className="text-sm text-text-secondary mt-1">Automation flows in your workspace</p>
         </div>
-        <button
-          onClick={handleCreate}
-          disabled={creating}
-          className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-md hover:bg-accent-hover transition-colors disabled:opacity-50"
-        >
-          {creating ? "Creating…" : "New Flow"}
-        </button>
+        {showNameForm ? (
+          <form onSubmit={handleCreate} className="flex items-center gap-2">
+            <input
+              ref={nameInputRef}
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Flow name…"
+              className="px-3 py-2 bg-surface border border-border rounded-md text-sm text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent w-48"
+              onKeyDown={(e) => e.key === "Escape" && cancelNameForm()}
+            />
+            <button
+              type="submit"
+              disabled={creating}
+              className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-md hover:bg-accent-hover transition-colors disabled:opacity-50"
+            >
+              {creating ? "Creating…" : "Create"}
+            </button>
+            <button
+              type="button"
+              onClick={cancelNameForm}
+              className="px-3 py-2 text-sm text-text-secondary border border-border rounded-md hover:text-text-primary transition-colors"
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <button
+            onClick={openNameForm}
+            className="px-4 py-2 bg-accent text-white text-sm font-medium rounded-md hover:bg-accent-hover transition-colors"
+          >
+            New Flow
+          </button>
+        )}
       </div>
 
       {error && (

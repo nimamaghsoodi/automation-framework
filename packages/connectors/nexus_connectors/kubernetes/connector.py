@@ -17,6 +17,11 @@ class KubernetesConnector(Connector):
     def _client(self) -> httpx.AsyncClient:
         token = self.credentials.get("token", "")
         base_url = self.credentials.get("server_url", "").rstrip("/")
+        if not base_url:
+            raise ConnectorError(
+                "Kubernetes server URL is not configured. Add a Kubernetes credential with your cluster API server URL (e.g. https://my-cluster.example.com:6443).",
+                retriable=False,
+            )
         ca_b64 = self.credentials.get("ca_cert_base64")
 
         if ca_b64:

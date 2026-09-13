@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, type Flow } from "../lib/api";
+import { api, authFetch, type Flow } from "../lib/api";
 import { cn } from "../lib/utils";
 
 const CRON_PRESETS = [
@@ -56,21 +56,16 @@ export default function ScriptsPage() {
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this script?")) return;
-    // Disable schedule first if active
-    await fetch(`/api/v1/schedules/${id}`, { method: "DELETE" }).catch(() => null);
+    await api.schedules.delete(id).catch(() => null);
     await api.flows.delete(id);
     setScripts((prev) => prev.filter((s) => s.id !== id));
   }
 
   async function handleToggle(script: Script) {
     if (script.schedule_enabled) {
-      await fetch(`/api/v1/schedules/${script.id}`, { method: "DELETE" });
+      await api.schedules.delete(script.id).catch(() => null);
     } else if (script.cron_expression) {
-      await fetch(`/api/v1/schedules/${script.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cron_expression: script.cron_expression }),
-      });
+      await api.schedules.set(script.id, script.cron_expression);
     }
     loadScripts();
   }
@@ -227,7 +222,7 @@ function NewScriptModal({
       });
 
       // Patch the graph_json to include the code and script marker
-      await fetch(`/api/v1/flows/${flow.id}`, {
+      await authFetch(`/api/v1/flows/${flow.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -257,15 +252,7 @@ function NewScriptModal({
 
       // Enable scheduling if cron configured
       if (cronExpression) {
-        const res = await fetch(`/api/v1/schedules/${flow.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cron_expression: cronExpression }),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.detail ?? "Failed to set schedule");
-        }
+        await api.schedules.set(flow.id, cronExpression);
       }
 
       onCreated();

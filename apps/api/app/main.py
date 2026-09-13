@@ -8,7 +8,7 @@ from app.api.routes import auth as auth_router
 from app.api.routes import users as users_router
 from app.api.routes.ws import router as ws_router
 from app.db import AsyncSessionLocal
-from app.services.connector_sync import sync_connectors, seed_dev_user, seed_admin_user
+from app.services.connector_sync import sync_connectors, seed_dev_user, seed_admin_user, seed_demo_flows
 from app.worker.connector_registry import autodiscover
 
 
@@ -19,6 +19,7 @@ async def lifespan(app: FastAPI):
         await seed_dev_user(db)
         await seed_admin_user(db)
         await sync_connectors(db)
+        await seed_demo_flows(db)
     yield
 
 

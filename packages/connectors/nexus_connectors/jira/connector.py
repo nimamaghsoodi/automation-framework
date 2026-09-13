@@ -12,8 +12,14 @@ class JiraConnector(Connector):
     manifest_path = Path(__file__).parent / "manifest.yaml"
 
     def _client(self) -> httpx.AsyncClient:
+        base_url = self.credentials.get("base_url", "").rstrip("/")
+        if not base_url:
+            raise ConnectorError(
+                "Jira base URL is not configured. Add a Jira credential with your Atlassian URL (e.g. https://yourcompany.atlassian.net).",
+                retriable=False,
+            )
         return httpx.AsyncClient(
-            base_url=self.credentials.get("base_url", "").rstrip("/"),
+            base_url=base_url,
             auth=(self.credentials.get("email", ""), self.credentials.get("api_token", "")),
             headers={"Accept": "application/json", "Content-Type": "application/json"},
             timeout=30,

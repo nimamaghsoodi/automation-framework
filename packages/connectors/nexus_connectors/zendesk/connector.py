@@ -14,6 +14,11 @@ class ZendeskConnector(Connector):
 
     def _base_url(self) -> str:
         subdomain = self.credentials.get("subdomain", "")
+        if not subdomain:
+            raise ConnectorError(
+                "Zendesk subdomain is not configured. Add a Zendesk credential with your subdomain (the part before .zendesk.com).",
+                retriable=False,
+            )
         return f"https://{subdomain}.zendesk.com/api/v2"
 
     def _auth_header(self) -> str:

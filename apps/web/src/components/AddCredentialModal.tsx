@@ -39,8 +39,7 @@ export default function AddCredentialModal({ onClose, onCreated, initialConnecto
   useEffect(() => {
     if (!selectedConnector) { setFields([]); return; }
     setValues({});
-    fetch(`/api/v1/connectors/${selectedConnector.key}/manifest`)
-      .then((r) => r.json())
+    api.connectors.manifest(selectedConnector.key)
       .then((manifest) => setFields(manifest?.auth?.fields ?? []))
       .catch(() => setFields([]));
   }, [selectedConnector?.key]);

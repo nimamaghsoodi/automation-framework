@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 
 from app.api.deps import get_current_user
 from app.db import get_db
@@ -43,6 +43,7 @@ class RunStepResponse(BaseModel):
 class RunResponse(BaseModel):
     id: str
     flow_id: str
+    flow_name: str
     flow_version: int
     trigger_source: str
     status: str
@@ -88,7 +89,12 @@ async def trigger_run(body: TriggerRunRequest, db: AsyncSession = Depends(get_db
 
 @router.get("/", response_model=list[RunResponse])
 async def list_runs(flow_id: str | None = None, db: AsyncSession = Depends(get_db)):
-    q = select(Run).options(selectinload(Run.steps)).order_by(Run.started_at.desc()).limit(100)
+    q = (
+        select(Run)
+        .options(selectinload(Run.steps), joinedload(Run.flow))
+        .order_by(Run.started_at.desc())
+        .limit(100)
+    )
     if flow_id:
         q = q.where(Run.flow_id == uuid.UUID(flow_id))
     rows = await db.execute(q)
@@ -98,7 +104,7 @@ async def list_runs(flow_id: str | None = None, db: AsyncSession = Depends(get_d
 @router.get("/{run_id}", response_model=RunResponse)
 async def get_run(run_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Run).where(Run.id == run_id).options(selectinload(Run.steps))
+        select(Run).where(Run.id == run_id).options(selectinload(Run.steps), joinedload(Run.flow))
     )
     run = result.scalar_one_or_none()
     if not run:
@@ -119,9 +125,11 @@ async def cancel_run(run_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 def _serialize_run(run: Run) -> dict:
     steps = getattr(run, "steps", []) or []
+    flow = getattr(run, "flow", None)
     return {
         "id": str(run.id),
         "flow_id": str(run.flow_id),
+        "flow_name": flow.name if flow else str(run.flow_id)[:8],
         "flow_version": run.flow_version,
         "trigger_source": run.trigger_source,
         "status": run.status,

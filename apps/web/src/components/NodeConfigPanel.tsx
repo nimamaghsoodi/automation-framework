@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Node } from "@xyflow/react";
 import { cn } from "../lib/utils";
-import type { Credential } from "../lib/api";
+import { api, type Credential, type ConnectorManifest } from "../lib/api";
 
 interface SchemaProperty {
   type: string;
@@ -9,20 +9,6 @@ interface SchemaProperty {
   description?: string;
   default?: unknown;
   enum?: string[];
-}
-
-interface ActionManifest {
-  key: string;
-  name: string;
-  description?: string;
-  input_schema: { properties: Record<string, SchemaProperty>; required?: string[] };
-}
-
-interface ConnectorManifest {
-  key: string;
-  name: string;
-  actions: ActionManifest[];
-  triggers: { key: string; name: string }[];
 }
 
 interface Props {
@@ -47,18 +33,12 @@ export default function NodeConfigPanel({ node, onUpdate, onDelete, onClose }: P
 
   useEffect(() => {
     if (!connectorKey) return;
-    fetch(`/api/v1/connectors/${connectorKey}/manifest`)
-      .then((r) => r.json())
-      .then(setManifest)
-      .catch(console.error);
-    fetch("/api/v1/credentials/")
-      .then((r) => r.json())
-      .then(setCredentials)
-      .catch(console.error);
+    api.connectors.manifest(connectorKey).then(setManifest).catch(console.error);
+    api.credentials.list().then(setCredentials).catch(console.error);
   }, [connectorKey]);
 
   const selectedAction = manifest?.actions.find((a) => a.key === config.action_key);
-  const schemaProps = selectedAction?.input_schema?.properties ?? {};
+  const schemaProps = (selectedAction?.input_schema?.properties ?? {}) as Record<string, SchemaProperty>;
   const requiredFields = selectedAction?.input_schema?.required ?? [];
 
   function set(key: string, value: unknown) {

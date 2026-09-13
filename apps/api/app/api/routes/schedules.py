@@ -43,9 +43,46 @@ class ScheduleRequest(BaseModel):
 
 class ScheduleResponse(BaseModel):
     flow_id: str
+    flow_name: str
+    flow_status: str
     cron_expression: str
-    enabled: bool
-    next_run: str | None = None
+    enabled: bool  # True = registered with redbeat and flow is active
+    is_script: bool = False
+
+
+@router.get("/", response_model=list[ScheduleResponse])
+async def list_schedules(db: AsyncSession = Depends(get_db)) -> list[ScheduleResponse]:
+    """Return every flow that has a cron trigger node in its graph."""
+    flows = (await db.execute(select(Flow))).scalars().all()
+    result: list[ScheduleResponse] = []
+    for flow in flows:
+        nodes = flow.graph_json.get("nodes", [])
+        cron_node = next(
+            (n for n in nodes if n.get("connector_key") == "cron"),
+            None,
+        )
+        if cron_node is None:
+            continue
+        # Cron expression: prefer the top-level key (set by set_schedule),
+        # fall back to the trigger node's own config_json.
+        cron_expr = (
+            flow.graph_json.get("cron_expression")
+            or cron_node.get("config_json", {}).get("cron_expression", "")
+        )
+        # A schedule is "enabled" when it's registered in redbeat (top-level key)
+        # AND the flow is currently active.
+        enabled = bool(
+            flow.graph_json.get("cron_expression") and flow.status == "active"
+        )
+        result.append(ScheduleResponse(
+            flow_id=str(flow.id),
+            flow_name=flow.name,
+            flow_status=flow.status,
+            cron_expression=cron_expr,
+            enabled=enabled,
+            is_script=bool(flow.graph_json.get("is_script")),
+        ))
+    return result
 
 
 @router.put("/{flow_id}")
@@ -96,6 +133,8 @@ async def set_schedule(
 
     return ScheduleResponse(
         flow_id=str(flow_id),
+        flow_name=flow.name,
+        flow_status=flow.status,
         cron_expression=body.cron_expression,
         enabled=True,
     )
@@ -144,6 +183,8 @@ async def get_schedule(
     cron_expr = flow.graph_json.get("cron_expression")
     return ScheduleResponse(
         flow_id=str(flow_id),
+        flow_name=flow.name,
+        flow_status=flow.status,
         cron_expression=cron_expr or "",
         enabled=bool(cron_expr and flow.status == "active"),
     )

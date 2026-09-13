@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api, type ConnectorManifest } from "../lib/api";
 import { cn } from "../lib/utils";
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -11,26 +12,16 @@ const CATEGORY_COLORS: Record<string, string> = {
   devops: "text-orange-400",
 };
 
-interface Manifest {
-  key: string;
-  name: string;
-  category: string;
-  description?: string;
-}
-
 interface Props {
   onAddNode: (connectorKey: string, connectorName: string, nodeType: "trigger" | "action") => void;
 }
 
 export default function ConnectorPalette({ onAddNode }: Props) {
-  const [manifests, setManifests] = useState<Record<string, Manifest>>({});
+  const [manifests, setManifests] = useState<Record<string, ConnectorManifest>>({});
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetch("/api/v1/connectors/manifests/all")
-      .then((r) => r.json())
-      .then(setManifests)
-      .catch(console.error);
+    api.connectors.allManifests().then(setManifests).catch(console.error);
   }, []);
 
   const filtered = Object.values(manifests).filter(

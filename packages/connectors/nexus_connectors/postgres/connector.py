@@ -11,12 +11,17 @@ class PostgresConnector(Connector):
     manifest_path = Path(__file__).parent / "manifest.yaml"
 
     def _dsn(self) -> str:
-        host = self.credentials.get("host", "localhost")
+        host = self.credentials.get("host", "")
+        if not host:
+            raise ConnectorError(
+                "PostgreSQL host is not configured. Add a PostgreSQL credential with host, port, database, username, and password.",
+                retriable=False,
+            )
         port = self.credentials.get("port", "5432")
         db = self.credentials.get("database", "")
         user = self.credentials.get("username", "")
         pwd = self.credentials.get("password", "")
-        ssl = self.credentials.get("ssl_mode", "require")
+        ssl = self.credentials.get("ssl_mode", "prefer")
         return f"postgresql://{user}:{pwd}@{host}:{port}/{db}?sslmode={ssl}"
 
     async def test_connection(self) -> dict[str, Any]:

@@ -45,13 +45,16 @@ export default function RunsPage() {
                 selected?.id === run.id && "bg-surface-overlay"
               )}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-text-secondary">{run.id.slice(0, 8)}…</span>
-                <span className={cn("text-xs font-medium", STATUS_COLORS[run.status] ?? "text-text-muted")}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-text-primary truncate">{run.flow_name}</span>
+                <span className={cn("text-xs font-medium shrink-0", STATUS_COLORS[run.status] ?? "text-text-muted")}>
                   {run.status}
                 </span>
               </div>
-              <div className="text-xs text-text-muted mt-0.5">{new Date(run.started_at).toLocaleString()}</div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[11px] text-text-muted">{new Date(run.started_at).toLocaleString()}</span>
+                <span className="text-[11px] font-mono text-text-muted">#{run.id.slice(0, 8)}</span>
+              </div>
             </button>
           ))
         )}
@@ -64,9 +67,10 @@ export default function RunsPage() {
         ) : (
           <>
             <div className="mb-4">
-              <div className="text-lg font-semibold font-mono">{selected.id.slice(0, 16)}…</div>
+              <div className="text-lg font-semibold">{selected.flow_name}</div>
               <div className="text-sm text-text-secondary mt-0.5">
-                {selected.trigger_source} · v{selected.flow_version} ·{" "}
+                <span className="font-mono text-text-muted">#{selected.id.slice(0, 8)}</span>
+                {" · "}{selected.trigger_source} · v{selected.flow_version} ·{" "}
                 <span className={STATUS_COLORS[selected.status] ?? ""}>{selected.status}</span>
               </div>
             </div>
