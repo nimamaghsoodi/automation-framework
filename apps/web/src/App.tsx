@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route, NavLink, useNavigate } from "react-router-dom";
 import FlowsPage from "./pages/FlowsPage";
 import FlowBuilderPage from "./pages/FlowBuilderPage";
@@ -86,8 +87,20 @@ function Sidebar() {
   );
 }
 
+function UnauthorizedRedirect() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    const handler = () => navigate("/login", { replace: true });
+    window.addEventListener("nexus:unauthorized", handler);
+    return () => window.removeEventListener("nexus:unauthorized", handler);
+  }, [navigate]);
+  return null;
+}
+
 export default function App() {
   return (
+    <>
+    <UnauthorizedRedirect />
     <Routes>
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
@@ -123,5 +136,6 @@ export default function App() {
         }
       />
     </Routes>
+    </>
   );
 }

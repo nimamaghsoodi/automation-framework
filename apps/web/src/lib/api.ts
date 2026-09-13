@@ -1,9 +1,10 @@
-import { getStoredToken } from "../store/authStore";
+import { useAuthStore } from "../store/authStore";
 
 const BASE = "/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getStoredToken();
+  // Read from in-memory Zustand store — always up-to-date, no localStorage race
+  const token = useAuthStore.getState().token;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...((init?.headers ?? {}) as Record<string, string>),
@@ -13,8 +14,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { ...init, headers });
 
   if (res.status === 401) {
-    localStorage.removeItem("nexus-auth");
-    window.location.href = "/login";
+    useAuthStore.getState().clearAuth();
+    // Use React Router navigation to avoid a full-page reload that would
+    // clear Zustand's in-memory store before rehydration completes
+    window.dispatchEvent(new CustomEvent("nexus:unauthorized"));
     throw new Error("Session expired");
   }
   if (!res.ok) {

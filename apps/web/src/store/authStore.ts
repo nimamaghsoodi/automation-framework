@@ -27,12 +27,3 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-/** Read token outside React (for api.ts request interceptor). */
-export function getStoredToken(): string | null {
-  try {
-    const raw = localStorage.getItem("nexus-auth");
-    return raw ? (JSON.parse(raw) as { state: { token: string | null } }).state.token : null;
-  } catch {
-    return null;
-  }
-}
