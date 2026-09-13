@@ -7,11 +7,16 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://api:8000",
+        changeOrigin: true,
+      },
+      "/ws": {
+        target: "ws://api:8000",
+        ws: true,
         changeOrigin: true,
       },
       "/health": {
-        target: "http://localhost:8000",
+        target: "http://api:8000",
         changeOrigin: true,
       },
     },
