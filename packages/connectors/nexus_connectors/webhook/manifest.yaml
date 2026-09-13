@@ -1,0 +1,37 @@
+key: webhook
+name: Webhook
+version: "1.0.0"
+category: trigger
+description: >
+  Generic inbound webhook trigger. Every flow with a webhook trigger gets a
+  unique URL; Nexus verifies the HMAC-SHA256 signature before enqueueing the run.
+icon_url: null
+required_scopes: []
+
+auth:
+  type: none
+  fields: []
+
+triggers:
+  - key: inbound
+    name: Inbound Webhook
+    description: Triggers when an HTTP POST is received at the flow's webhook URL.
+    webhook_path: /webhook/{flow_id}
+    output_schema:
+      type: object
+      properties:
+        headers:
+          type: object
+          title: Request Headers
+        body:
+          type: object
+          title: Request Body
+        query:
+          type: object
+          title: Query Parameters
+        method:
+          type: string
+          title: HTTP Method
+      required: []
+
+actions: []

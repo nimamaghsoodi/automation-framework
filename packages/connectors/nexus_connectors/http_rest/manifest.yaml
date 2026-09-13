@@ -1,0 +1,88 @@
+key: http_rest
+name: HTTP / REST
+version: "1.0.0"
+category: generic
+description: >
+  Generic outbound HTTP connector. Escape hatch for any system without a dedicated
+  connector yet. Supports API key, Bearer token, and Basic auth.
+icon_url: null
+required_scopes: []
+
+auth:
+  type: api_key
+  fields:
+    - name: auth_type
+      label: Auth Type
+      type: select
+      required: false
+      options: [none, api_key, bearer, basic]
+      default: none
+    - name: api_key
+      label: API Key / Token
+      type: secret
+      required: false
+      help_text: Used for api_key or bearer auth type
+    - name: api_key_header
+      label: Header Name (for api_key)
+      type: string
+      required: false
+      placeholder: X-Api-Key
+    - name: username
+      label: Username (for basic auth)
+      type: string
+      required: false
+    - name: password
+      label: Password (for basic auth)
+      type: secret
+      required: false
+
+triggers: []
+
+actions:
+  - key: request
+    name: HTTP Request
+    description: Make an HTTP request and return the response body.
+    input_schema:
+      type: object
+      required: [url, method]
+      properties:
+        url:
+          type: string
+          title: URL
+        method:
+          type: string
+          title: Method
+          enum: [GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS]
+          default: GET
+        headers:
+          type: object
+          title: Additional Headers
+          default: {}
+        query_params:
+          type: object
+          title: Query Parameters
+          default: {}
+        body:
+          type: object
+          title: Request Body (JSON)
+          default: {}
+        timeout_seconds:
+          type: integer
+          title: Timeout (seconds)
+          default: 30
+        follow_redirects:
+          type: boolean
+          title: Follow Redirects
+          default: true
+    output_schema:
+      type: object
+      properties:
+        status_code:
+          type: integer
+        body:
+          type: object
+        headers:
+          type: object
+        ok:
+          type: boolean
+      required: [status_code, ok]

@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    font-size: 14px;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2f45;
+    border-radius: 3px;
+  }
+}
+
+/* React Flow overrides — dark canvas */
+.react-flow__background {
+  background-color: #0f1117;
+}
+.react-flow__controls button {
+  background: #181c27;
+  border-color: #2a2f45;
+  color: #94a3b8;
+}
+.react-flow__controls button:hover {
+  background: #1e2333;
+}
+.react-flow__minimap {
+  background: #181c27;
+  border: 1px solid #2a2f45;
+}
