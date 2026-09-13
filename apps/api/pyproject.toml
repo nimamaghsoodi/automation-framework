@@ -34,6 +34,7 @@ dependencies = [
     "jsonschema>=4.23",
     "websockets>=14",
     "celery-redbeat>=2.2",
+    "python3-saml>=1.16",
 ]
 
 [project.optional-dependencies]

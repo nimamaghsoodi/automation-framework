@@ -13,13 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy import delete as sa_delete
 
+from app.api.deps import get_current_user
 from app.db import get_db
 from app.models.flow import Flow, FlowEdge, FlowNode
 from app.models.run import Run, RunStep
 from app.services.connector_sync import DEV_USER_ID
 from app.worker.dag import validate_graph, DAGValidationError
 
-router = APIRouter(prefix="/flows", tags=["flows"])
+router = APIRouter(prefix="/flows", tags=["flows"], dependencies=[Depends(get_current_user)])
 
 
 # --- Schemas ---

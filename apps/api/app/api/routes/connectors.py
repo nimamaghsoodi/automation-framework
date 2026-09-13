@@ -7,11 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.db import get_db
 from app.models.connector import Connector
 from nexus_sdk.registry import get_manifest, all_manifests
 
-router = APIRouter(prefix="/connectors", tags=["connectors"])
+router = APIRouter(prefix="/connectors", tags=["connectors"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/")

@@ -29,6 +29,23 @@ async def seed_dev_user(db: AsyncSession) -> None:
         await db.commit()
 
 
+async def seed_admin_user(db: AsyncSession) -> None:
+    """Ensure a human admin account with login credentials exists."""
+    from app.config import settings
+    from app.services.auth import hash_password
+
+    result = await db.execute(select(User).where(User.email == settings.admin_email))
+    user = result.scalar_one_or_none()
+    if user is None:
+        db.add(User(
+            email=settings.admin_email,
+            hashed_password=hash_password(settings.admin_password),
+            role="admin",
+            is_active=True,
+        ))
+        await db.commit()
+
+
 async def sync_connectors(db: AsyncSession) -> None:
     manifests = all_manifests()
     for key, manifest in manifests.items():

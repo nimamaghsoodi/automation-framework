@@ -12,12 +12,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.api.deps import get_current_user
 from app.db import get_db
 from app.execution.celery_backend import CeleryExecutionBackend
 from app.models.flow import Flow
 from app.models.run import Run, RunStep
 
-router = APIRouter(prefix="/runs", tags=["runs"])
+router = APIRouter(prefix="/runs", tags=["runs"], dependencies=[Depends(get_current_user)])
 _backend = CeleryExecutionBackend()
 
 

@@ -14,11 +14,12 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.celery_app import celery_app
 from app.db import get_db
 from app.models.flow import Flow
 
-router = APIRouter(prefix="/schedules", tags=["schedules"])
+router = APIRouter(prefix="/schedules", tags=["schedules"], dependencies=[Depends(get_current_user)])
 
 REDBEAT_KEY_PREFIX = "nexus-flow-"
 

@@ -1,10 +1,22 @@
+import { getStoredToken } from "../store/authStore";
+
 const BASE = "/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
-    ...init,
-  });
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((init?.headers ?? {}) as Record<string, string>),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+
+  if (res.status === 401) {
+    localStorage.removeItem("nexus-auth");
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail ?? `HTTP ${res.status}`);
@@ -16,6 +28,22 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  auth: {
+    login: (email: string, password: string) =>
+      request<{ access_token: string; user: AuthUser }>("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
+      }),
+    me: () => request<AuthUser>("/auth/me"),
+  },
+  users: {
+    list: () => request<UserRecord[]>("/users/"),
+    create: (body: { email: string; password: string; role: string }) =>
+      request<UserRecord>("/users/", { method: "POST", body: JSON.stringify(body) }),
+    update: (id: string, body: { role?: string; is_active?: boolean; password?: string }) =>
+      request<UserRecord>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    delete: (id: string) => request<void>(`/users/${id}`, { method: "DELETE" }),
+  },
   flows: {
     list: () => request<Flow[]>("/flows/"),
     get: (id: string) => request<Flow>(`/flows/${id}`),
@@ -48,6 +76,22 @@ export const api = {
 };
 
 // Types
+export interface AuthUser {
+  id: string;
+  email: string;
+  role: "admin" | "editor" | "viewer";
+  is_active: boolean;
+}
+
+export interface UserRecord {
+  id: string;
+  email: string;
+  role: "admin" | "editor" | "viewer";
+  is_active: boolean;
+  sso_subject: string | null;
+  created_at: string;
+}
+
 export interface Flow {
   id: string;
   name: string;

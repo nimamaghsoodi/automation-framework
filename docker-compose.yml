@@ -42,6 +42,21 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ENVIRONMENT: development
       DEBUG: "true"
+      # Admin bootstrap credentials
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nexus.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      # OAuth2 — set these in .env to enable social login
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      OAUTH_REDIRECT_BASE: ${OAUTH_REDIRECT_BASE:-http://localhost:8000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # SAML — set SAML_ENABLED=true and configure IdP to enable
+      SAML_ENABLED: ${SAML_ENABLED:-false}
+      SAML_IDP_ENTITY_ID: ${SAML_IDP_ENTITY_ID:-}
+      SAML_IDP_SSO_URL: ${SAML_IDP_SSO_URL:-}
+      SAML_IDP_CERT: ${SAML_IDP_CERT:-}
       # Mount sdk/connectors directly into PYTHONPATH — no pip reinstall needed
       PYTHONPATH: /app:/sdk:/connectors
     ports:
@@ -75,6 +90,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_32chars}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ENVIRONMENT: development
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nexus.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       PYTHONPATH: /app:/sdk:/connectors
     depends_on:
       postgres:
@@ -101,6 +118,8 @@ services:
       SECRET_KEY: ${SECRET_KEY:-dev_secret_key_change_in_production_32chars}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ENVIRONMENT: development
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@nexus.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
       PYTHONPATH: /app:/sdk:/connectors
     depends_on:
       redis:

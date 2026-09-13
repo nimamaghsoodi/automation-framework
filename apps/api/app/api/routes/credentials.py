@@ -9,14 +9,16 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.db import get_db
 from app.models.credential import CredentialInstance
+from app.models.user import User
 from app.services.connector_sync import DEV_USER_ID
 from app.services.credential_service import encrypt_credentials, decrypt_payload
 from nexus_sdk.registry import get_connector_class
 from nexus_sdk.connector import ConnectorError
 
-router = APIRouter(prefix="/credentials", tags=["credentials"])
+router = APIRouter(prefix="/credentials", tags=["credentials"], dependencies=[Depends(get_current_user)])
 
 
 class CredentialCreateRequest(BaseModel):

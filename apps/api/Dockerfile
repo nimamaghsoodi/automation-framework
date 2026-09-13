@@ -3,7 +3,8 @@ FROM python:3.12-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc && \
+    libpq-dev gcc \
+    libxmlsec1-dev libxmlsec1-openssl libxml2-dev pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 # Build context is the repo root — copy only what's needed for the layer cache
