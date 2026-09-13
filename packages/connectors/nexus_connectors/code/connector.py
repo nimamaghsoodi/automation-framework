@@ -21,26 +21,30 @@ class CodeConnector(Connector):
             raise ConnectorError(f"Unknown action: {action_key!r}")
         return await self._run_python(inputs)
 
+    # Keys that belong to the connector's own config — stripped before exposing to the script
+    _INTERNAL_KEYS = frozenset(["source_code", "action_key", "timeout_seconds", "credential_instance_id"])
+
     async def _run_python(self, inputs: dict[str, Any]) -> dict[str, Any]:
         import asyncio
 
         source_code = inputs.get("source_code", "")
         timeout = int(inputs.get("timeout_seconds", 30))
-        flow_inputs = inputs.get("_flow_inputs", {})    # injected by task runner
-        trigger_data = inputs.get("_trigger_data", {})  # injected by task runner
 
         if not source_code.strip():
             raise ConnectorError("source_code is empty")
 
+        # Everything that is NOT a connector config key is data from predecessor steps.
+        # The task runner flat-merges predecessor outputs then overlays config_json,
+        # so we strip back the config keys to expose clean predecessor data.
+        script_inputs = {k: v for k, v in inputs.items() if k not in self._INTERNAL_KEYS}
+
         # Build a wrapper that injects variables and captures `output`
         wrapper = textwrap.dedent(f"""\
             import json as _json
-            import sys as _sys
 
-            inputs = _json.loads({json.dumps(json.dumps(flow_inputs))})
-            trigger = _json.loads({json.dumps(json.dumps(trigger_data))})
+            inputs = _json.loads({json.dumps(json.dumps(script_inputs))})
 
-            _user_ns = {{"inputs": inputs, "trigger": trigger}}
+            _user_ns = {{"inputs": inputs}}
             _source = {json.dumps(source_code)}
             exec(_source, _user_ns)
 
