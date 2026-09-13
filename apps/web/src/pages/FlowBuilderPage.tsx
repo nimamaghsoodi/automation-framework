@@ -174,8 +174,13 @@ export default function FlowBuilderPage() {
 
   async function handleDelete() {
     if (!flow) return;
-    await api.flows.delete(flow.id);
-    navigate("/");
+    try {
+      await api.flows.delete(flow.id);
+      navigate("/");
+    } catch (e: unknown) {
+      setStatus(e instanceof Error ? e.message : "Delete failed");
+      setConfirmDelete(false);
+    }
   }
 
   function handleRunStarted(run: Run) {

@@ -11,8 +11,11 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy import delete as sa_delete
+
 from app.db import get_db
 from app.models.flow import Flow, FlowEdge, FlowNode
+from app.models.run import Run, RunStep
 from app.services.connector_sync import DEV_USER_ID
 from app.worker.dag import validate_graph, DAGValidationError
 
@@ -108,6 +111,8 @@ async def create_flow(body: FlowCreateRequest, db: AsyncSession = Depends(get_db
             position=n.position,
         ))
     for e in body.edges:
+        if not (_is_valid_uuid(e.source) and _is_valid_uuid(e.target)):
+            continue
         db.add(FlowEdge(
             id=uuid.UUID(e.id) if _is_valid_uuid(e.id) else uuid.uuid4(),
             flow_id=flow.id,
@@ -172,6 +177,8 @@ async def update_flow(flow_id: uuid.UUID, body: FlowUpdateRequest, db: AsyncSess
                 position=n.position,
             ))
         for e in body.edges:
+            if not (_is_valid_uuid(e.source) and _is_valid_uuid(e.target)):
+                continue  # skip edges whose endpoints aren't UUIDs (old non-UUID node IDs)
             db.add(FlowEdge(
                 id=uuid.UUID(e.id) if _is_valid_uuid(e.id) else uuid.uuid4(),
                 flow_id=flow.id,
@@ -190,6 +197,13 @@ async def delete_flow(flow_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     flow = await db.get(Flow, flow_id)
     if not flow:
         raise HTTPException(status_code=404, detail="Flow not found")
+    # Delete run steps then runs before deleting the flow (FK constraint)
+    run_ids = (await db.execute(
+        select(Run.id).where(Run.flow_id == flow_id)
+    )).scalars().all()
+    if run_ids:
+        await db.execute(sa_delete(RunStep).where(RunStep.run_id.in_(run_ids)))
+        await db.execute(sa_delete(Run).where(Run.flow_id == flow_id))
     await db.delete(flow)
     await db.commit()
 
