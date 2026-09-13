@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import health, flows, runs, connectors, credentials
+from app.api.routes import health, flows, runs, connectors, credentials, schedules
 from app.api.routes.ws import router as ws_router
 from app.db import AsyncSessionLocal
 from app.services.connector_sync import sync_connectors, seed_dev_user
@@ -40,4 +40,5 @@ app.include_router(flows.router, prefix="/api/v1")
 app.include_router(runs.router, prefix="/api/v1")
 app.include_router(connectors.router, prefix="/api/v1")
 app.include_router(credentials.router, prefix="/api/v1")
+app.include_router(schedules.router, prefix="/api/v1")
 app.include_router(ws_router)

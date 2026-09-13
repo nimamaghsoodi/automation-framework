@@ -141,11 +141,29 @@ export default function NodeConfigPanel({ node, onUpdate, onDelete, onClose }: P
 
         {/* Dynamic action input fields */}
         {selectedAction && Object.entries(schemaProps).map(([key, prop]) => {
-          // Skip internal fields managed by the engine
           if (["action_key", "credential_instance_id"].includes(key)) return null;
           const isRequired = requiredFields.includes(key);
           const label = prop.title ?? key;
           const val = (config[key] ?? prop.default ?? "") as string;
+
+          // Code editor — render a full-height textarea with monospace styling
+          if ((prop as SchemaProperty & { "x-editor"?: string })["x-editor"] === "code") {
+            const language = (prop as SchemaProperty & { "x-language"?: string })["x-language"] ?? "python";
+            return (
+              <Field key={key} label={label} required={isRequired}>
+                <CodeEditor
+                  value={val as string}
+                  language={language}
+                  onChange={(v) => set(key, v)}
+                />
+                <p className="text-[10px] text-text-muted mt-1.5 leading-relaxed">
+                  Available variables: <code className="text-accent">inputs</code> (dict of previous node outputs),{" "}
+                  <code className="text-accent">trigger</code> (trigger payload). Set{" "}
+                  <code className="text-accent">output</code> to pass data to the next step.
+                </p>
+              </Field>
+            );
+          }
 
           if (prop.enum) {
             return (
@@ -256,6 +274,50 @@ function Field({ label, required, children }: { label: string; required?: boolea
         {label}{required && <span className="text-status-error ml-0.5">*</span>}
       </label>
       {children}
+    </div>
+  );
+}
+
+function CodeEditor({
+  value,
+  language,
+  onChange,
+}: {
+  value: string;
+  language: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-border">
+        <span className="text-[10px] font-mono text-text-muted uppercase tracking-widest">{language}</span>
+        <span className="text-[10px] text-text-muted">Tab = 4 spaces</span>
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Tab") {
+            e.preventDefault();
+            const el = e.currentTarget;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const next = value.substring(0, start) + "    " + value.substring(end);
+            onChange(next);
+            requestAnimationFrame(() => {
+              el.selectionStart = el.selectionEnd = start + 4;
+            });
+          }
+        }}
+        spellCheck={false}
+        className={[
+          "w-full bg-zinc-950 text-emerald-300 font-mono text-[12px] leading-relaxed",
+          "px-3 py-3 min-h-[200px] resize-y",
+          "focus:outline-none placeholder-zinc-700",
+          "whitespace-pre",
+        ].join(" ")}
+        placeholder={`# Write your ${language} script here\noutput = {}`}
+      />
     </div>
   );
 }

@@ -1,0 +1,50 @@
+key: code
+name: Code
+version: "1.0.0"
+category: utility
+description: >
+  Execute a Python script as a step in your flow. The script receives inputs
+  from previous nodes and can produce any output dict.
+icon_url: null
+required_scopes: []
+
+auth:
+  type: none
+  fields: []
+
+triggers: []
+
+actions:
+  - key: run_python
+    name: Run Python
+    description: >
+      Execute a Python script. Available variables: `inputs` (dict of all
+      previous node outputs keyed by node ID), `trigger` (trigger payload).
+      Set `output` to return data to the next step.
+    code_editor: true
+    language: python
+    input_schema:
+      type: object
+      required: [source_code]
+      properties:
+        source_code:
+          type: string
+          title: Python Script
+          x-editor: code
+          x-language: python
+          description: >
+            Python script to execute. Set the `output` variable to pass data
+            to the next step. `inputs` and `trigger` are available.
+          default: |
+            # inputs: dict of previous step outputs
+            # trigger: trigger payload dict
+
+            output = {
+                "result": "hello from code node",
+                "count": len(inputs),
+            }
+        timeout_seconds:
+          type: integer
+          title: Timeout (seconds)
+          description: Maximum execution time before the script is killed.
+          default: 30

@@ -4,10 +4,12 @@ import FlowBuilderPage from "./pages/FlowBuilderPage";
 import RunsPage from "./pages/RunsPage";
 import ConnectorsPage from "./pages/ConnectorsPage";
 import CredentialsPage from "./pages/CredentialsPage";
+import ScriptsPage from "./pages/ScriptsPage";
 import { cn } from "./lib/utils";
 
 const NAV = [
   { to: "/", label: "Flows", end: true },
+  { to: "/scripts", label: "Scripts" },
   { to: "/connectors", label: "Connectors" },
   { to: "/credentials", label: "Credentials" },
   { to: "/runs", label: "Runs" },
@@ -46,6 +48,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<FlowsPage />} />
           <Route path="/flows/:id" element={<FlowBuilderPage />} />
+          <Route path="/scripts" element={<ScriptsPage />} />
           <Route path="/runs" element={<RunsPage />} />
           <Route path="/connectors" element={<ConnectorsPage />} />
           <Route path="/credentials" element={<CredentialsPage />} />

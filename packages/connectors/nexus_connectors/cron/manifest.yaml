@@ -1,0 +1,31 @@
+key: cron
+name: Schedule
+version: "1.0.0"
+category: trigger
+description: >
+  Trigger a flow on a recurring schedule using a cron expression.
+  The flow receives the scheduled execution time as trigger payload.
+icon_url: null
+required_scopes: []
+
+auth:
+  type: none
+  fields: []
+
+triggers:
+  - key: scheduled
+    name: Scheduled Run
+    description: Fires the flow on the configured cron schedule.
+    output_schema:
+      type: object
+      properties:
+        scheduled_at:
+          type: string
+          title: Scheduled At
+          description: ISO-8601 timestamp when this run was scheduled.
+        run_number:
+          type: integer
+          title: Run Number
+          description: Monotonically increasing counter for this schedule.
+
+actions: []

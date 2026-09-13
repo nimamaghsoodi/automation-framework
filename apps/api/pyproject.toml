@@ -33,6 +33,7 @@ dependencies = [
     "pyyaml>=6",
     "jsonschema>=4.23",
     "websockets>=14",
+    "celery-redbeat>=2.2",
 ]
 
 [project.optional-dependencies]

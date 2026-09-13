@@ -49,6 +49,8 @@ class FlowUpdateRequest(BaseModel):
     status: str | None = None
     nodes: list[FlowNodeIn] | None = None
     edges: list[FlowEdgeIn] | None = None
+    # Raw graph dict — used by the Scripts page to embed metadata alongside nodes/edges
+    graph: dict[str, Any] | None = None
 
 
 class FlowResponse(BaseModel):
@@ -140,7 +142,11 @@ async def update_flow(flow_id: uuid.UUID, body: FlowUpdateRequest, db: AsyncSess
     if body.status is not None:
         flow.status = body.status
 
-    if body.nodes is not None and body.edges is not None:
+    if body.graph is not None:
+        # Raw graph dict (used by Scripts page — carries metadata like is_script)
+        flow.graph_json = body.graph
+        flow.version += 1
+    elif body.nodes is not None and body.edges is not None:
         graph = _build_graph_json(body.nodes, body.edges)
         try:
             validate_graph(graph)
