@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import health, flows, runs, connectors, credentials
 from app.api.routes.ws import router as ws_router
 from app.db import AsyncSessionLocal
-from app.services.connector_sync import sync_connectors
+from app.services.connector_sync import sync_connectors, seed_dev_user
 from app.worker.connector_registry import autodiscover
 
 
@@ -14,6 +14,7 @@ from app.worker.connector_registry import autodiscover
 async def lifespan(app: FastAPI):
     autodiscover()
     async with AsyncSessionLocal() as db:
+        await seed_dev_user(db)
         await sync_connectors(db)
     yield
 

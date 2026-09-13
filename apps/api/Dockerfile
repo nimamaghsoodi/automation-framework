@@ -6,14 +6,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc && \
     rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml .
-RUN pip install --no-cache-dir -e .
+# Build context is the repo root — copy only what's needed for the layer cache
+COPY packages/sdk /sdk
+COPY packages/connectors /connectors
+COPY apps/api/pyproject.toml .
 
-COPY . .
+RUN pip install --no-cache-dir /sdk /connectors -e .
 
-# Install the SDK package from the monorepo
-COPY ../../packages/sdk /sdk
-RUN pip install --no-cache-dir /sdk
+COPY apps/api/ .
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1

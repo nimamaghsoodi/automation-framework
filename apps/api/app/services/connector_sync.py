@@ -11,6 +11,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from nexus_sdk.registry import all_manifests
 from app.models.connector import Connector
+from app.models.user import User
+
+# Fixed dev user — created at startup when no auth middleware is wired yet
+DEV_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+async def seed_dev_user(db: AsyncSession) -> None:
+    result = await db.execute(select(User).where(User.id == DEV_USER_ID))
+    if result.scalar_one_or_none() is None:
+        db.add(User(
+            id=DEV_USER_ID,
+            email="dev@nexus.local",
+            role="admin",
+            is_active=True,
+        ))
+        await db.commit()
 
 
 async def sync_connectors(db: AsyncSession) -> None:

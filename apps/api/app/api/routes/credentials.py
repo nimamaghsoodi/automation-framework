@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models.credential import CredentialInstance
+from app.services.connector_sync import DEV_USER_ID
 from app.services.credential_service import encrypt_credentials, decrypt_payload
 from nexus_sdk.registry import get_connector_class
 from nexus_sdk.connector import ConnectorError
@@ -32,11 +33,10 @@ async def list_credentials(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_credential(body: CredentialCreateRequest, db: AsyncSession = Depends(get_db)):
-    placeholder_owner = uuid.uuid4()
     cred = CredentialInstance(
         connector_id=uuid.UUID(body.connector_id),
         name=body.name,
-        owner_id=placeholder_owner,
+        owner_id=DEV_USER_ID,
         encrypted_payload=encrypt_credentials(body.payload),
     )
     db.add(cred)

@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_db
 from app.models.flow import Flow, FlowEdge, FlowNode
+from app.services.connector_sync import DEV_USER_ID
 from app.worker.dag import validate_graph, DAGValidationError
 
 router = APIRouter(prefix="/flows", tags=["flows"])
@@ -51,7 +52,7 @@ class FlowUpdateRequest(BaseModel):
 
 
 class FlowResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     name: str
     description: str | None
     version: int
@@ -87,13 +88,11 @@ async def create_flow(body: FlowCreateRequest, db: AsyncSession = Depends(get_db
         except DAGValidationError as e:
             raise HTTPException(status_code=422, detail=str(e))
 
-    # Placeholder owner — replace with current user once auth middleware is wired
-    placeholder_owner = uuid.uuid4()
     flow = Flow(
         name=body.name,
         description=body.description,
         graph_json=graph,
-        created_by=placeholder_owner,
+        created_by=DEV_USER_ID,
     )
     db.add(flow)
     await db.flush()
