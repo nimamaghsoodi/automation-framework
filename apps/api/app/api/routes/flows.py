@@ -153,7 +153,11 @@ async def update_flow(flow_id: uuid.UUID, body: FlowUpdateRequest, db: AsyncSess
         flow.graph_json = body.graph
         flow.version += 1
     elif body.nodes is not None and body.edges is not None:
-        graph = _build_graph_json(body.nodes, body.edges)
+        new_graph = _build_graph_json(body.nodes, body.edges)
+        # Preserve top-level metadata (cron_expression, is_script, etc.) from the existing graph
+        existing = flow.graph_json or {}
+        graph = {k: v for k, v in existing.items() if k not in ("nodes", "edges")}
+        graph.update(new_graph)
         try:
             validate_graph(graph)
         except DAGValidationError as e:

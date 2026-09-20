@@ -62,6 +62,8 @@ export default function FlowBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState("");
   const nodeIdCounter = useRef(1);
 
   const {
@@ -85,10 +87,26 @@ export default function FlowBuilderPage() {
     if (!id) return;
     api.flows.get(id).then((f) => {
       setFlow(f);
+      setNameValue(f.name);
       setNodes(f.graph_json.nodes.map(toRfNode));
       setEdges(f.graph_json.edges.map(toRfEdge));
     });
   }, [id]);
+
+  async function handleNameCommit() {
+    setEditingName(false);
+    if (!flow) return;
+    const trimmed = nameValue.trim() || flow.name;
+    if (trimmed === flow.name) return;
+    try {
+      const updated = await api.flows.update(flow.id, { name: trimmed });
+      setFlow(updated);
+      setNameValue(updated.name);
+    } catch (e: unknown) {
+      setNameValue(flow.name);
+      setStatus(e instanceof Error ? e.message : "Rename failed");
+    }
+  }
 
   const onConnect = useCallback(
     (connection: Connection) =>
@@ -203,9 +221,30 @@ export default function FlowBuilderPage() {
           ← Flows
         </button>
         <div className="w-px h-4 bg-border" />
-        <div className="flex-1">
-          <span className="font-medium text-text-primary">{flow?.name ?? "…"}</span>
-          {flow && <span className="ml-2 text-xs text-text-muted">v{flow.version} · {flow.status}</span>}
+        <div className="flex-1 flex items-center gap-2">
+          {editingName ? (
+            <input
+              autoFocus
+              type="text"
+              value={nameValue}
+              onChange={(e) => setNameValue(e.target.value)}
+              onBlur={handleNameCommit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") { setNameValue(flow?.name ?? ""); setEditingName(false); }
+              }}
+              className="font-medium text-text-primary bg-transparent border-b border-accent/50 focus:outline-none min-w-0 w-48"
+            />
+          ) : (
+            <button
+              onClick={() => setEditingName(true)}
+              title="Click to rename"
+              className="font-medium text-text-primary hover:text-accent transition-colors cursor-text truncate max-w-xs"
+            >
+              {flow?.name ?? "…"}
+            </button>
+          )}
+          {flow && <span className="text-xs text-text-muted shrink-0">v{flow.version} · {flow.status}</span>}
         </div>
         {statusMsg && <span className="text-xs text-text-secondary">{statusMsg}</span>}
         <button
